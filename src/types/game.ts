@@ -42,6 +42,7 @@ export interface Player {
   turn_order: number;
   is_connected: boolean;
   created_at: string;
+  hand_raised_at?: string | null;
 }
 
 export interface GameTrack {
@@ -119,7 +120,8 @@ export type BroadcastEvent =
   | { type: 'token:spent'; payload: { player_id: string; new_count: number } }
   | { type: 'game:finished'; payload: { winner_id: string; final_scores: { player_id: string; name: string; cards: number }[] } }
   | { type: 'player:joined'; payload: Player }
-  | { type: 'player:disconnected'; payload: { player_id: string } };
+  | { type: 'player:disconnected'; payload: { player_id: string } }
+  | { type: 'player:hand_changed'; payload: { player_id: string; hand_raised_at: string | null } };
 
 // ============================================
 // Game State (client-side aggregate)
@@ -132,4 +134,5 @@ export interface GameState {
   myTimeline: TimelineCard[];
   allTimelines: Record<string, TimelineCard[]>;
   stealAttempts: StealAttempt[];
+  activeTrackId: string | null;
 }

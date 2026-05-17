@@ -35,7 +35,7 @@ export default function HomePage() {
 
       <div className="w-full max-w-sm space-y-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <Link href="/api/auth/spotify" id="host-game-button">
+          <a href="/api/auth/spotify" id="host-game-button">
             <div className="glass rounded-2xl p-6 cursor-pointer hover:border-primary/40 transition-all duration-300 group">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0">
@@ -52,7 +52,7 @@ export default function HomePage() {
                 </svg>
               </div>
             </div>
-          </Link>
+          </a>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
@@ -74,10 +74,10 @@ export default function HomePage() {
               </div>
             </button>
           ) : (
-            <motion.form onSubmit={handleJoin} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass rounded-2xl p-6">
+            <motion.form onSubmit={handleJoin} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass rounded-2xl p-6" suppressHydrationWarning>
               <label htmlFor="game-code-input" className="text-sm font-medium text-text-secondary mb-2 block">Game Code</label>
               <div className="flex gap-3">
-                <input id="game-code-input" type="text" value={gameCode} onChange={(e) => setGameCode(e.target.value.toUpperCase().slice(0, 4))} placeholder="ABCD" className="input-field text-center font-display text-2xl tracking-[0.3em] uppercase flex-1" autoComplete="off" autoFocus maxLength={4} />
+                <input id="game-code-input" type="text" value={gameCode} onChange={(e) => setGameCode(e.target.value.toUpperCase().slice(0, 4))} placeholder="ABCD" className="input-field text-center font-display text-2xl tracking-[0.3em] uppercase flex-1" autoComplete="off" autoFocus maxLength={4} suppressHydrationWarning />
                 <button type="submit" disabled={gameCode.length < 4} className="btn-primary px-6 shrink-0">Go</button>
               </div>
             </motion.form>
