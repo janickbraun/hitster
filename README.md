@@ -8,24 +8,6 @@ Hitster is a real-time multiplayer music trivia game where you build a timeline 
 - Spotify Premium account (required for the game host to play music)
 - Supabase project (for database and real-time multiplayer synchronization)
 
-## Getting Started
-
-1. Clone the repository.
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Set up your environment variables:
-   Copy `.env.example` to `.env.local` and fill in your credentials for Supabase and Spotify.
-   ```bash
-   cp .env.example .env.local
-   ```
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
 ## How to Play
 
 1. The host starts a game by authenticating with Spotify. A game code will be generated.
