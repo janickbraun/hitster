@@ -809,8 +809,37 @@ export default function HostPage() {
       (card) => card.track.id !== currentRoundTrack?.id
     );
 
+    const cardCount = activePlayerTimeline.length;
+    
+    // Choose dynamic sizes based on card count to fit on screen without scrolling
+    let cardWidthClass = 'w-32';
+    let imageSizeClass = 'w-10 h-10';
+    let yearTextClass = 'text-sm';
+    let trackTextClass = 'text-[9px]';
+    let artistTextClass = 'text-[8px]';
+    let connectorWidthClass = 'w-3';
+    let gapClass = 'gap-2';
+
+    if (cardCount > 8) {
+      cardWidthClass = 'w-20';
+      imageSizeClass = 'w-7 h-7';
+      yearTextClass = 'text-xs';
+      trackTextClass = 'text-[8px]';
+      artistTextClass = 'text-[7px]';
+      connectorWidthClass = 'w-1.5';
+      gapClass = 'gap-1';
+    } else if (cardCount > 6) {
+      cardWidthClass = 'w-24';
+      imageSizeClass = 'w-8 h-8';
+      yearTextClass = 'text-xs';
+      trackTextClass = 'text-[8px]';
+      artistTextClass = 'text-[8px]';
+      connectorWidthClass = 'w-2';
+      gapClass = 'gap-1.5';
+    }
+
     return (
-      <main className="h-screen flex flex-col justify-between px-6 py-3 select-none overflow-hidden max-w-7xl mx-auto w-full">
+      <main className="h-screen flex flex-col justify-between px-6 py-3 select-none overflow-hidden w-full max-w-none">
         {/* Top bar */}
         <div className="flex items-center justify-between mb-2">
           <div>
@@ -831,7 +860,7 @@ export default function HostPage() {
         {/* Steal Window & Hands Raised Status Banner for Host */}
         {gameState.roundPhase === 'steal_window' && (
           <div className="glass rounded-xl p-2.5 mb-2 border border-warning/30 bg-warning/5 text-center relative overflow-hidden animate-fade-in shrink-0">
-            <div className="absolute top-0 left-0 h-1 bg-gradient-to-r from-warning to-error transition-all duration-75" style={{ width: `${countdown.progress * 100}%` }} />
+            <div className="absolute top-0 left-0 h-1 bg-warning transition-all duration-75" style={{ width: `${countdown.progress * 100}%` }} />
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="text-left">
                 <p className="font-display font-black text-warning flex items-center gap-1.5 uppercase text-xs">
@@ -913,18 +942,18 @@ export default function HostPage() {
             {(!gameState.allTimelines[activePlayer.id] || gameState.allTimelines[activePlayer.id].length === 0) ? (
               <p className="text-xs text-text-muted italic py-1 text-left animate-pulse">No cards placed yet. This round will be their first card!</p>
             ) : (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 select-none scrollbar-thin">
+              <div className={`flex items-center ${gapClass} overflow-x-auto pb-1 select-none scrollbar-thin`}>
                 {gameState.allTimelines[activePlayer.id]
                   .map((card, cardIdx, arr) => {
                     const isCurrentRoundTrack = currentRoundTrack && card.track.id === currentRoundTrack.id;
                     const isRevealed = !isCurrentRoundTrack || showReveal;
 
                     return (
-                      <div key={card.track.id} className="flex items-center gap-2 shrink-0">
+                      <div key={card.track.id} className={`flex items-center ${gapClass} shrink-0`}>
                         <motion.div
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className={`border rounded-lg p-2 w-32 text-center shadow-lg relative group overflow-hidden transition-all duration-500 ${
+                          className={`border rounded-lg p-2 ${cardWidthClass} text-center shadow-lg relative group overflow-hidden transition-all duration-500 ${
                             isCurrentRoundTrack
                               ? isRevealed
                                 ? 'bg-success/15 border-success/40' // Revealed
@@ -934,13 +963,13 @@ export default function HostPage() {
                         >
                           {isCurrentRoundTrack && !isRevealed ? (
                             <>
-                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-pulse mx-auto mb-1.5 shrink-0">
+                              <div className={`${imageSizeClass} rounded-lg bg-primary flex items-center justify-center animate-pulse mx-auto mb-1.5 shrink-0`}>
                                 <span className="text-base animate-spin-slow">💿</span>
                               </div>
-                              <span className="font-display font-black text-primary-light text-sm block animate-pulse">
+                              <span className={`font-display font-black text-primary-light ${yearTextClass} block animate-pulse`}>
                                 ????
                               </span>
-                              <p className="font-bold text-[9px] text-primary-light truncate mt-0.5 animate-pulse">
+                              <p className={`font-bold ${trackTextClass} text-primary-light truncate mt-0.5 animate-pulse`}>
                                 Mystery Card
                               </p>
                             </>
@@ -950,23 +979,23 @@ export default function HostPage() {
                                 <img
                                   src={card.track.album_image_url}
                                   alt=""
-                                  className="w-10 h-10 rounded object-cover mx-auto mb-1.5 border border-white/10 group-hover:scale-105 transition-transform duration-300"
+                                  className={`${imageSizeClass} rounded object-cover mx-auto mb-1.5 border border-white/10 group-hover:scale-105 transition-transform duration-300`}
                                 />
                               )}
-                              <span className="font-display font-black text-primary text-sm block">
+                              <span className={`font-display font-black text-primary ${yearTextClass} block`}>
                                 {card.track.release_year}
                               </span>
-                              <p className="font-semibold text-[9px] text-text-primary truncate mt-0.5">
+                              <p className={`font-semibold ${trackTextClass} text-text-primary truncate mt-0.5`}>
                                 {card.track.track_name}
                               </p>
-                              <p className="text-[8px] text-text-muted truncate">
+                              <p className={`${artistTextClass} text-text-muted truncate`}>
                                 {card.track.artist_name}
                               </p>
                             </>
                           )}
                         </motion.div>
                         {cardIdx < arr.length - 1 && (
-                          <div className="h-[2px] w-3 bg-white/10 shrink-0 relative flex items-center justify-center">
+                          <div className={`h-[2px] ${connectorWidthClass} bg-white/10 shrink-0 relative flex items-center justify-center`}>
                             <div className="w-1 h-1 rounded-full bg-primary/60" />
                           </div>
                         )}
@@ -1107,7 +1136,7 @@ export default function HostPage() {
                         <motion.div 
                           animate={spotify.isPlaying ? { rotate: 360 } : {}}
                           transition={spotify.isPlaying ? { repeat: Infinity, duration: 8, ease: "linear" } : {}}
-                          className="w-16 h-16 rounded-full border-4 border-double border-white/20 flex items-center justify-center bg-gradient-to-tr from-primary/30 to-accent/30 shadow-inner animate-pulse"
+                          className="w-16 h-16 rounded-full border-4 border-double border-white/20 flex items-center justify-center bg-primary/30 shadow-inner animate-pulse"
                         >
                           <span className="text-2xl filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">🎵</span>
                         </motion.div>
@@ -1150,9 +1179,9 @@ export default function HostPage() {
         </div>
 
         {/* Players bar */}
-        <div className="flex gap-2 overflow-x-auto pb-1 shrink-0">
+        <div className="flex gap-2 overflow-x-auto pb-1 shrink-0 pointer-events-none">
           {gameState.players.map((player, i) => (
-            <div key={player.id} className={`glass rounded-xl p-2 min-w-[100px] shrink-0 text-center transition-all border relative ${!player.is_connected ? 'opacity-50 border-error/20 bg-error/5' : 'border-white/5'}`}>
+            <div key={player.id} className={`glass rounded-xl p-2 min-w-[100px] shrink-0 text-center transition-all border relative pointer-events-auto ${!player.is_connected ? 'opacity-50 border-error/20 bg-error/5' : 'border-white/5'}`}>
               {(() => {
                 const handRaisedPlayers = gameState.players
                   .filter((p) => p.hand_raised_at)
@@ -1164,7 +1193,7 @@ export default function HostPage() {
                 if (!priority) return null;
                 
                 return (
-                  <div className="absolute top-1 right-1 flex items-center justify-center bg-gradient-to-tr from-success to-emerald-500 text-white rounded-full w-4 h-4 text-[8px] font-bold border border-success/20 shadow-md shadow-success/20 animate-bounce">
+                  <div className="absolute top-1 right-1 flex items-center justify-center bg-success text-white rounded-full w-4 h-4 text-[8px] font-bold border border-success/20 shadow-md shadow-success/20 animate-bounce">
                     ✋{priority}
                   </div>
                 );
@@ -1174,13 +1203,15 @@ export default function HostPage() {
                 {player.display_name} {!player.is_connected && <span className="text-error font-medium">(Offline)</span>}
               </p>
               <p className="text-[9px] text-text-muted mt-0.5">{player.tokens} 🪙 · {getPlayerCardCount(player.id)} cards</p>
-              <button onClick={() => handleAwardToken(player)} className="text-[9px] text-warning-light mt-0.5 hover:underline">+1 Token</button>
+              <button onClick={() => handleAwardToken(player)} className="text-[9px] text-warning-light mt-0.5 hover:underline">
+                +1 Token
+              </button>
             </div>
           ))}
         </div>
 
         {/* Connected Spotify ID Bottom Bar */}
-        <div className="mt-1 pt-1.5 border-t border-white/5 flex flex-col items-center justify-center gap-1 select-none shrink-0 w-full">
+        <div className="mt-1 pt-1.5 border-t border-white/5 flex flex-col items-center justify-center gap-1 select-none shrink-0 w-full pointer-events-none">
           <div className="flex items-center gap-2 flex-wrap justify-center text-[10px]">
             <span className={`w-1.5 h-1.5 rounded-full ${spotify.deviceId ? 'bg-success animate-pulse' : 'bg-error'}`} />
             <span className="font-medium text-text-secondary">
@@ -1189,7 +1220,7 @@ export default function HostPage() {
             <button 
               onClick={() => spotify.transferPlayback()} 
               disabled={!spotify.deviceId} 
-              className="text-primary font-semibold hover:underline ml-1 cursor-pointer disabled:opacity-50 flex items-center gap-0.5"
+              className="text-primary font-semibold hover:underline ml-1 cursor-pointer disabled:opacity-50 flex items-center gap-0.5 pointer-events-auto"
             >
               🔄 Refresh Device
             </button>

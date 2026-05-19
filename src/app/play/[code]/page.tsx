@@ -332,7 +332,7 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
     if (isActivePlayerGuess) {
       return (
         <div className="rounded-xl p-2.5 flex items-center gap-2.5 border border-dashed border-primary bg-primary/5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-pulse shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center animate-pulse shrink-0">
             <span className="text-xs animate-spin-slow">💿</span>
           </div>
           <div className="flex-1 min-w-0 text-left">
@@ -558,12 +558,12 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
       {/* Status banner */}
       <AnimatePresence mode="wait">
         {isMyTurn && (gameState.roundPhase === 'song_playing' || gameState.roundPhase === 'placement') ? (
-          <motion.div key="my-turn" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-gradient-to-r from-primary to-accent rounded-xl p-3 mb-3 text-center">
+          <motion.div key="my-turn" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-primary rounded-xl p-3 mb-3 text-center">
             <p className="font-display font-bold text-white">Your Turn!</p>
             <p className="text-white/80 text-xs">Place the song in your timeline</p>
           </motion.div>
         ) : gameState.roundPhase === 'steal_window' ? (
-          <motion.div key="steal" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-gradient-to-r from-warning to-error rounded-xl p-3 mb-3 text-center">
+          <motion.div key="steal" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-warning rounded-xl p-3 mb-3 text-center">
             <p className="font-display font-bold text-white">Steal Window!</p>
             <p className="text-white/80 text-xs">{Math.ceil(countdown.timeLeft / 1000)}s remaining</p>
             <div className="mt-2 h-1 bg-white/20 rounded-full overflow-hidden">
@@ -784,7 +784,7 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
           >
             <p className="text-[10px] text-primary font-semibold uppercase tracking-wider mb-1.5">Active Song (Covered)</p>
             <div className="flex items-center gap-3 justify-center">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-spin-slow shrink-0 shadow-lg shadow-primary/20">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center animate-spin-slow shrink-0 shadow-lg shadow-primary/20">
                 <span className="text-lg">💿</span>
               </div>
               <div className="text-left flex-1 min-w-0">
@@ -805,7 +805,7 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
               animate={{ opacity: 1, scale: 1 }}
               className="rounded-xl p-3 flex items-center gap-3 border-2 border-dashed border-primary bg-primary/10 shadow-lg shadow-primary/10"
             >
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-pulse shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center animate-pulse shrink-0">
                 <span className="text-base animate-spin-slow">💿</span>
               </div>
               <div className="flex-1 min-w-0 text-left">
@@ -838,7 +838,7 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
                   </>
                 ) : (
                   <>
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-pulse shrink-0">
+                    <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center animate-pulse shrink-0">
                       <span className="text-lg animate-spin-slow">💿</span>
                     </div>
                     <div className="flex-1 min-w-0 text-left">
@@ -859,7 +859,7 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
                   animate={{ opacity: 1, scale: 1 }}
                   className="rounded-xl p-3 flex items-center gap-3 border-2 border-dashed border-primary bg-primary/10 shadow-lg shadow-primary/10"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-pulse shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center animate-pulse shrink-0">
                     <span className="text-base animate-spin-slow">💿</span>
                   </div>
                   <div className="flex-1 min-w-0 text-left">
@@ -912,8 +912,8 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
             onClick={handleToggleHand}
             className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative border overflow-hidden ${
               me?.hand_raised_at
-                ? 'bg-gradient-to-tr from-success to-emerald-500 border-success/30 shadow-success/30 text-white'
-                : 'bg-gradient-to-tr from-primary to-accent border-primary/30 shadow-primary/30 text-white'
+                ? 'bg-success border-success/30 shadow-success/30 text-white'
+                : 'bg-primary border-primary/30 shadow-primary/30 text-white'
             }`}
           >
             {/* Pulsing glow underlay */}

@@ -1,8 +1,8 @@
 /**
- * Generates a random 4-character alphanumeric game code.
- * Uses only uppercase letters and digits, excluding ambiguous chars (0/O, 1/I/L).
+ * Generates a random 4-digit numeric game code.
+ * Uses only digits (0-9).
  */
-const CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const CHARS = '0123456789';
 
 export function generateGameCode(length = 4): string {
   let code = '';

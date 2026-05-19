@@ -38,7 +38,7 @@ export default function HomePage() {
           <a href="/api/auth/spotify" id="host-game-button">
             <div className="glass rounded-2xl p-6 cursor-pointer hover:border-primary/40 transition-all duration-300 group">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0">
+                <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center shrink-0">
                   <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                   </svg>
@@ -77,7 +77,7 @@ export default function HomePage() {
             <motion.form onSubmit={handleJoin} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass rounded-2xl p-6" suppressHydrationWarning>
               <label htmlFor="game-code-input" className="text-sm font-medium text-text-secondary mb-2 block">Game Code</label>
               <div className="flex gap-3">
-                <input id="game-code-input" type="text" value={gameCode} onChange={(e) => setGameCode(e.target.value.toUpperCase().slice(0, 4))} placeholder="ABCD" className="input-field text-center font-display text-2xl tracking-[0.3em] uppercase flex-1" autoComplete="off" autoFocus maxLength={4} suppressHydrationWarning />
+                <input id="game-code-input" type="text" value={gameCode} onChange={(e) => setGameCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))} placeholder="1234" className="input-field text-center font-display text-2xl tracking-[0.3em] uppercase flex-1" autoComplete="off" autoFocus maxLength={4} suppressHydrationWarning />
                 <button type="submit" disabled={gameCode.length < 4} className="btn-primary px-6 shrink-0">Go</button>
               </div>
             </motion.form>
