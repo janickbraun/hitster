@@ -193,7 +193,7 @@ export function useGameState(
         });
 
         setPlayers((prev) => {
-          return prev.map((player) => {
+          const mapped = prev.map((player) => {
             const isConnectedNow = activeIds.has(player.id);
 
             // If we are the host, sync to the database when connection status changes
@@ -202,14 +202,29 @@ export function useGameState(
               if (wasConnected !== isConnectedNow) {
                 lastConnectedStatesRef.current[player.id] = isConnectedNow;
 
-                // Update DB asynchronously
-                supabaseRef.current
-                  .from('players')
-                  .update({ is_connected: isConnectedNow })
-                  .eq('id', player.id)
-                  .then(({ error }) => {
-                    if (error) console.error('Failed to sync player connection status:', error);
-                  });
+                if (session.status === 'lobby' && !isConnectedNow) {
+                  // Player disconnected during lobby, delete them from DB so lobby doesn't get stuck
+                  supabaseRef.current
+                    .from('players')
+                    .delete()
+                    .eq('id', player.id)
+                    .then(({ error }) => {
+                      if (error) {
+                        console.error('Failed to remove player from lobby:', error);
+                      } else {
+                        broadcast({ type: 'player:left', payload: { player_id: player.id } });
+                      }
+                    });
+                } else {
+                  // Update DB asynchronously
+                  supabaseRef.current
+                    .from('players')
+                    .update({ is_connected: isConnectedNow })
+                    .eq('id', player.id)
+                    .then(({ error }) => {
+                      if (error) console.error('Failed to sync player connection status:', error);
+                    });
+                }
               }
             }
 
@@ -218,6 +233,12 @@ export function useGameState(
               is_connected: isConnectedNow,
             };
           });
+
+          // If in lobby, filter out disconnected players immediately to avoid layout flicker
+          if (session?.status === 'lobby') {
+            return mapped.filter((p) => activeIds.has(p.id));
+          }
+          return mapped;
         });
       })
       .on('broadcast', { event: 'game:started' }, ({ payload }) => {
@@ -315,6 +336,10 @@ export function useGameState(
             player.id === p.player_id ? { ...player, is_connected: false } : player
           )
         );
+      })
+      .on('broadcast', { event: 'player:left' }, ({ payload }) => {
+        const p = payload as { player_id: string };
+        setPlayers((prev) => prev.filter((player) => player.id !== p.player_id));
       })
       .subscribe((status) => {
         setIsConnected(status === 'SUBSCRIBED');

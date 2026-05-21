@@ -26,6 +26,8 @@ export default function HostPage() {
   const [hasPlayedCurrentTrack, setHasPlayedCurrentTrack] = useState(false);
   const [showReveal, setShowReveal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isEndingGame, setIsEndingGame] = useState(false);
+  const [autoStartSecondsLeft, setAutoStartSecondsLeft] = useState<number | null>(null);
   const countdown = useCountdown();
   const hasStartedCountdownRef = useRef(false);
   const hasTriggeredAutoRevealRef = useRef(false);
@@ -35,7 +37,12 @@ export default function HostPage() {
   const getPlayerCardCount = (playerId: string) => {
     const timeline = gameState.allTimelines[playerId] || [];
     const verifiedTimeline = timeline.filter(
-      (card) => !currentRoundTrack || card.track.id !== currentRoundTrack.id
+      (card) => {
+        // Only filter out the current mystery track if we are actively guessing/stealing
+        const isResolving = gameState.roundPhase === 'resolution' || gameState.roundPhase === 'game_over' || isEndingGame;
+        if (isResolving) return true;
+        return !currentRoundTrack || card.track.id !== currentRoundTrack.id;
+      }
     );
     return Math.max(1, verifiedTimeline.length);
   };
@@ -121,7 +128,7 @@ export default function HostPage() {
     // Active player is disconnected! Set up a timer to auto-skip
     const timer = setTimeout(() => {
       console.log(`Auto-skipping turn for disconnected player: ${activePlayer.display_name}`);
-      handleNextRound();
+      handleSkipPlayer();
     }, 10000); // 10 seconds timeout
 
     return () => clearTimeout(timer);
@@ -172,6 +179,38 @@ export default function HostPage() {
     }
   }, [gameState.roundPhase, countdown.timeLeft, showReveal, gameState.players]);
 
+  // Auto-start next round after 5 seconds if no hands are raised
+  useEffect(() => {
+    if (
+      gameState.roundPhase === 'resolution' &&
+      !isEndingGame &&
+      !gameState.players.some((p) => p.hand_raised_at)
+    ) {
+      if (autoStartSecondsLeft === null) {
+        setAutoStartSecondsLeft(5);
+      }
+    } else {
+      setAutoStartSecondsLeft(null);
+    }
+  }, [gameState.roundPhase, isEndingGame, gameState.players, autoStartSecondsLeft]);
+
+  // Tick the auto-start countdown timer
+  useEffect(() => {
+    if (autoStartSecondsLeft === null) return;
+
+    if (autoStartSecondsLeft <= 0) {
+      setAutoStartSecondsLeft(null);
+      handleNextRound();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setAutoStartSecondsLeft((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [autoStartSecondsLeft]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fetch playlist
   const handleFetchPlaylist = async () => {
     setIsLoadingPlaylist(true);
@@ -201,6 +240,17 @@ export default function HostPage() {
       if (!user) throw new Error('Not authenticated');
 
       const code = generateGameCode();
+
+      // Automatically clean up old game sessions older than 24 hours (as a backup to database cron)
+      const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      try {
+        await supabase
+          .from('game_sessions')
+          .delete()
+          .lt('created_at', cutoffTime);
+      } catch (cleanupErr) {
+        console.warn('Failed to clean up old game sessions:', cleanupErr);
+      }
 
       // Create session
       const { data: session, error: sessionErr } = await supabase
@@ -320,9 +370,10 @@ export default function HostPage() {
 
   // Advance to next round
   const handleNextRound = async () => {
-    if (!sessionId) return;
+    if (!sessionId || isEndingGame) return;
     setHasPlayedCurrentTrack(false);
     setShowReveal(false);
+    setAutoStartSecondsLeft(null);
 
     // Check if any player has won (reached win target, default 10 cards)
     const winTarget = gameState.session?.win_target || 10;
@@ -400,6 +451,47 @@ export default function HostPage() {
     }
   };
 
+  // Skip player turn (AFK / Disconnected)
+  const handleSkipPlayer = async () => {
+    if (!sessionId || !currentRoundTrack) return;
+    const activePlayerId = gameState.session?.current_player_id;
+    if (!activePlayerId) return;
+
+    try {
+      // Pause current Spotify playback
+      try {
+        await spotify.pause();
+      } catch (err) {
+        console.warn('Failed to pause Spotify during skip:', err);
+      }
+
+      // 1. Delete incorrect/unconfirmed card from active player's timeline
+      await supabase.rpc('delete_timeline_card', {
+        p_player_id: activePlayerId,
+        p_session_id: sessionId,
+        p_track_id: currentRoundTrack.id,
+      });
+
+      // 2. Discard track
+      await supabase
+        .from('game_tracks')
+        .update({ status: 'discarded' })
+        .eq('id', currentRoundTrack.id);
+
+      // 3. Clear steal attempts for this round
+      await supabase
+        .from('steal_attempts')
+        .update({ result: 'lost' })
+        .eq('session_id', sessionId)
+        .eq('track_id', currentRoundTrack.id);
+
+      // 4. Advance to next round
+      await handleNextRound();
+    } catch (err) {
+      console.error('Failed to skip player:', err);
+    }
+  };
+
   // Stop music and move to placement
   const handleStopMusic = async () => {
     await spotify.pause();
@@ -460,7 +552,25 @@ export default function HostPage() {
       (card) => card.track.id !== currentRoundTrack.id
     );
 
-    // 1. Calculate correct chronological position in original timeline
+    // 1. Helper function to check if a guess position is correct
+    // A position P is correct if inserting the track at index P keeps the timeline sorted.
+    const isPositionCorrect = (pos: number) => {
+      if (pos < 0 || pos > originalTimeline.length) return false;
+      
+      // Check left neighbor: originalTimeline[pos - 1] <= currentRoundTrack.release_year
+      if (pos > 0 && originalTimeline[pos - 1].track.release_year > currentRoundTrack.release_year) {
+        return false;
+      }
+      
+      // Check right neighbor: currentRoundTrack.release_year <= originalTimeline[pos]
+      if (pos < originalTimeline.length && currentRoundTrack.release_year > originalTimeline[pos].track.release_year) {
+        return false;
+      }
+      
+      return true;
+    };
+
+    // Calculate correct chronological position in original timeline (fallback for display/history if needed)
     let correctPosition = 0;
     for (let i = 0; i < originalTimeline.length; i++) {
       if (currentRoundTrack.release_year >= originalTimeline[i].track.release_year) {
@@ -477,7 +587,9 @@ export default function HostPage() {
     let outcome: 'correct' | 'stolen' | 'discarded' = 'discarded';
     let winnerId: string | null = null;
 
-    if (activePlayerGuessPosition === correctPosition) {
+    const activePlayerIsCorrect = activePlayerGuessPosition !== null && isPositionCorrect(activePlayerGuessPosition);
+
+    if (activePlayerIsCorrect) {
       // Active player is correct!
       outcome = 'correct';
       winnerId = activePlayerId;
@@ -523,14 +635,15 @@ export default function HostPage() {
         p_track_id: currentRoundTrack.id,
       });
 
-      // Query database for steal attempts for this track
+      // Query database for steal attempts for this track, ordered by creation time
       const { data: steals } = await supabase
         .from('steal_attempts')
         .select('*')
         .eq('session_id', sessionId)
-        .eq('track_id', currentRoundTrack.id);
+        .eq('track_id', currentRoundTrack.id)
+        .order('created_at', { ascending: true });
 
-      const winningSteal = steals?.find((s) => s.proposed_position === correctPosition);
+      const winningSteal = steals?.find((s) => isPositionCorrect(s.proposed_position));
 
       if (winningSteal) {
         // A stealer got it right!
@@ -622,7 +735,7 @@ export default function HostPage() {
       track_id: currentRoundTrack.id,
       active_player_id: activePlayerId,
       active_player_position: activePlayerGuessPosition,
-      was_correct: activePlayerGuessPosition === correctPosition,
+      was_correct: activePlayerIsCorrect,
       winner_player_id: winnerId,
       outcome: outcome,
     });
@@ -640,6 +753,51 @@ export default function HostPage() {
 
     // Hydrate host timelines immediately
     gameState.fetchAllTimelines();
+
+    // Check for game winner
+    const winTarget = gameState.session?.win_target || 10;
+    let winnerCardCount = 0;
+    if (winnerId) {
+      if (outcome === 'correct') {
+        winnerCardCount = activePlayerTimeline.length;
+      } else if (outcome === 'stolen') {
+        winnerCardCount = (gameState.allTimelines[winnerId] || []).length + 1;
+      }
+    }
+
+    if (winnerId && winnerCardCount >= winTarget) {
+      setIsEndingGame(true);
+      // Delay finishing the game slightly (e.g. 2.5s) so players see the final card resolution
+      setTimeout(async () => {
+        await supabase
+          .from('game_sessions')
+          .update({ status: 'finished' })
+          .eq('id', sessionId);
+
+        const finalScores = gameState.players.map((p) => {
+          let cards = getPlayerCardCount(p.id);
+          if (p.id === winnerId) {
+            cards = winnerCardCount;
+          } else if (p.id === activePlayerId && outcome !== 'correct') {
+            cards = originalTimeline.length;
+          }
+          return {
+            player_id: p.id,
+            name: p.display_name,
+            cards: cards,
+          };
+        });
+
+        gameState.broadcast({
+          type: 'game:finished',
+          payload: { winner_id: winnerId, final_scores: finalScores },
+        });
+
+        setPhase('finished');
+        localStorage.removeItem('hitster_host_game_code');
+        localStorage.removeItem('hitster_host_session_id');
+      }, 2500);
+    }
   };
 
   // Award token (manually add a token to player's balance, capped at 5)
@@ -927,16 +1085,15 @@ export default function HostPage() {
                 </h3>
               </div>
               
-              {/* Skip turn button if disconnected */}
-              {!activePlayer.is_connected && (
-                <button 
-                  onClick={handleNextRound} 
-                  className="btn-secondary py-1 px-2.5 text-[10px] text-error border-error/20 hover:bg-error/10 flex items-center gap-1 animate-bounce"
-                >
-                  <span>Skip Turn</span>
-                  <span className="bg-error/20 px-1 py-0.2 rounded font-mono text-[9px]">10s</span>
-                </button>
-              )}
+              {/* Skip player button for host (either if disconnected or AFK) */}
+              <button 
+                onClick={handleSkipPlayer} 
+                className={`btn-secondary py-1 px-2.5 text-[10px] text-error border-error/20 hover:bg-error/10 flex items-center gap-1 ${!activePlayer.is_connected ? 'animate-bounce' : ''}`}
+                title="Skip player turn (AFK / Disconnected)"
+              >
+                <span>Skip Player</span>
+                {!activePlayer.is_connected && <span className="bg-error/20 px-1 py-0.2 rounded font-mono text-[9px]">10s</span>}
+              </button>
             </div>
 
             {(!gameState.allTimelines[activePlayer.id] || gameState.allTimelines[activePlayer.id].length === 0) ? (
@@ -1161,16 +1318,38 @@ export default function HostPage() {
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-2 justify-center mt-2 shrink-0">
-                {spotify.isPlaying ? (
-                  <button onClick={handleStopMusic} className="btn-secondary text-xs py-1.5 px-4">⏸ Pause</button>
-                ) : (
-                  <button onClick={handlePlayMusic} className="btn-secondary text-xs py-1.5 px-4">
-                    {hasPlayedCurrentTrack || spotify.currentState?.track_window?.current_track?.uri === currentRoundTrack.spotify_uri ? '▶ Resume' : '▶ Play'}
-                  </button>
+              <div className="flex flex-col items-center mt-2 shrink-0 w-full gap-2">
+                <div className="flex flex-wrap gap-2 justify-center w-full">
+                  {spotify.isPlaying ? (
+                    <button onClick={handleStopMusic} className="btn-secondary text-xs py-1.5 px-4">⏸ Pause</button>
+                  ) : (
+                    <button onClick={handlePlayMusic} className="btn-secondary text-xs py-1.5 px-4">
+                      {hasPlayedCurrentTrack || spotify.currentState?.track_window?.current_track?.uri === currentRoundTrack.spotify_uri ? '▶ Resume' : '▶ Play'}
+                    </button>
+                  )}
+                  {!showReveal && (
+                    <button 
+                      onClick={handleRevealRound} 
+                      disabled={gameState.roundPhase !== 'steal_window'} 
+                      className="btn-primary text-xs py-1.5 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={gameState.roundPhase !== 'steal_window' ? "Waiting for active player placement..." : "Reveal song details"}
+                    >
+                      👁 Reveal
+                    </button>
+                  )}
+                  {showReveal && (
+                    isEndingGame ? (
+                      <button disabled className="btn-primary text-xs py-1.5 px-4 opacity-50 cursor-not-allowed">Ending Game...</button>
+                    ) : (
+                      <button onClick={handleNextRound} className="btn-primary text-xs py-1.5 px-4">Next Round →</button>
+                    )
+                  )}
+                </div>
+                {showReveal && !isEndingGame && autoStartSecondsLeft !== null && (
+                  <p className="text-[10px] text-text-muted animate-pulse mt-1">
+                    ⏱ Auto-start in <span className="text-primary font-bold">{autoStartSecondsLeft}s</span>
+                  </p>
                 )}
-                {!showReveal && <button onClick={handleRevealRound} className="btn-primary text-xs py-1.5 px-4">👁 Reveal</button>}
-                {showReveal && <button onClick={handleNextRound} className="btn-primary text-xs py-1.5 px-4">Next Round →</button>}
               </div>
             </div>
           ) : (

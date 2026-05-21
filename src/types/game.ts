@@ -121,6 +121,7 @@ export type BroadcastEvent =
   | { type: 'game:finished'; payload: { winner_id: string; final_scores: { player_id: string; name: string; cards: number }[] } }
   | { type: 'player:joined'; payload: Player }
   | { type: 'player:disconnected'; payload: { player_id: string } }
+  | { type: 'player:left'; payload: { player_id: string } }
   | { type: 'player:hand_changed'; payload: { player_id: string; hand_raised_at: string | null } };
 
 // ============================================

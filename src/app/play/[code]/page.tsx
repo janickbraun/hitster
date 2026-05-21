@@ -157,15 +157,18 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
 
       if (!isCorrect) {
         setPlacementStatus('wrong');
-        // Delete incorrect card from timeline atomically
-        supabase.rpc('delete_timeline_card', {
-          p_player_id: myPlayerId,
-          p_session_id: gameState.session?.id,
-          p_track_id: gameState.currentTrack.id
-        }).then(() => {
-          // Fetch timeline again after delete
-          gameState.fetchTimeline(myPlayerId!).then(setMyTimeline);
-        });
+        const trackId = gameState.currentTrack.id;
+        // Delay deleting the incorrect card so the user can see it glow red for 5 seconds
+        setTimeout(() => {
+          supabase.rpc('delete_timeline_card', {
+            p_player_id: myPlayerId,
+            p_session_id: gameState.session?.id,
+            p_track_id: trackId
+          }).then(() => {
+            // Fetch timeline again after delete
+            gameState.fetchTimeline(myPlayerId!).then(setMyTimeline);
+          });
+        }, 5000);
       } else {
         setPlacementStatus('correct');
       }
@@ -823,10 +826,32 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
 
         {myTimeline.map((card, idx) => {
           const isTrackRevealed = card.track.id !== gameState.activeTrackId || gameState.roundPhase === 'resolution' || gameState.roundPhase === 'game_over';
+          const isCurrentCheckingCard = card.track.id === gameState.currentTrack?.id && gameState.roundPhase === 'resolution';
+
+          let cardStyle: React.CSSProperties = {};
+          if (isCurrentCheckingCard && isMyTurn) {
+            if (placementStatus === 'correct') {
+              cardStyle = {
+                borderColor: 'var(--color-success)',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                boxShadow: '0 0 20px rgba(16, 185, 129, 0.5)',
+              };
+            } else if (placementStatus === 'wrong') {
+              cardStyle = {
+                borderColor: 'var(--color-error)',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)',
+              };
+            }
+          }
 
           return (
             <div key={card.track.id} className="space-y-2">
-              <motion.div layout className="glass rounded-xl p-3 flex items-center gap-3 card-enter">
+              <motion.div 
+                layout 
+                className="glass rounded-xl p-3 flex items-center gap-3 card-enter transition-all duration-300"
+                style={cardStyle}
+              >
                 {isTrackRevealed ? (
                   <>
                     {card.track.album_image_url && <img src={card.track.album_image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
