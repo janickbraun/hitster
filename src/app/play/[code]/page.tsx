@@ -815,7 +815,15 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
                 <p className="font-bold text-xs text-primary-light animate-pulse">???</p>
                 <p className="text-text-muted text-[10px]">Positioned here (Covered)</p>
               </div>
-              <span className="font-display font-bold text-primary-light text-base shrink-0 animate-pulse">????</span>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePlaceCard();
+                }}
+                className="btn-primary !py-2.5 !px-5 !text-sm font-bold rounded-xl shadow-lg cursor-pointer shrink-0 min-h-[44px] flex items-center justify-center"
+              >
+                Confirm
+              </button>
             </motion.div>
           ) : (
             <button onClick={() => setSelectedPosition(0)} className={`w-full rounded-xl border-2 border-dashed transition-all touch-target py-2 ${selectedPosition === null ? 'h-12 border-border hover:border-primary/50' : 'h-10 border-border/40 hover:border-primary/50 text-xs'}`}>
@@ -828,20 +836,12 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
           const isTrackRevealed = card.track.id !== gameState.activeTrackId || gameState.roundPhase === 'resolution' || gameState.roundPhase === 'game_over';
           const isCurrentCheckingCard = card.track.id === gameState.currentTrack?.id && gameState.roundPhase === 'resolution';
 
-          let cardStyle: React.CSSProperties = {};
+          let glowClass = '';
           if (isCurrentCheckingCard && isMyTurn) {
             if (placementStatus === 'correct') {
-              cardStyle = {
-                borderColor: 'var(--color-success)',
-                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                boxShadow: '0 0 20px rgba(16, 185, 129, 0.5)',
-              };
+              glowClass = '!border-success !bg-success/15 !shadow-[0_0_20px_rgba(16,185,129,0.5)]';
             } else if (placementStatus === 'wrong') {
-              cardStyle = {
-                borderColor: 'var(--color-error)',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)',
-              };
+              glowClass = '!border-error !bg-error/15 !shadow-[0_0_20px_rgba(239,68,68,0.5)]';
             }
           }
 
@@ -849,8 +849,7 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
             <div key={card.track.id} className="space-y-2">
               <motion.div 
                 layout 
-                className="glass rounded-xl p-3 flex items-center gap-3 card-enter transition-all duration-300"
-                style={cardStyle}
+                className={`glass rounded-xl p-3 flex items-center gap-3 card-enter transition-all duration-300 ${glowClass}`}
               >
                 {isTrackRevealed ? (
                   <>
@@ -891,7 +890,15 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
                     <p className="font-bold text-xs text-primary-light animate-pulse">???</p>
                     <p className="text-text-muted text-[10px]">Positioned here (Covered)</p>
                   </div>
-                  <span className="font-display font-bold text-primary-light text-base shrink-0 animate-pulse">????</span>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlaceCard();
+                    }}
+                    className="btn-primary !py-2.5 !px-5 !text-sm font-bold rounded-xl shadow-lg cursor-pointer shrink-0 min-h-[44px] flex items-center justify-center"
+                  >
+                    Confirm
+                  </button>
                 </motion.div>
               ) : (
                 <button onClick={() => setSelectedPosition(idx + 1)} className={`w-full rounded-xl border-2 border-dashed transition-all touch-target py-2 ${selectedPosition === null ? 'h-12 border-border hover:border-primary/50' : 'h-10 border-border/40 hover:border-primary/50 text-xs'}`}>
@@ -911,15 +918,6 @@ export default function PlayerPage({ params }: { params: Promise<{ code: string 
           </div>
         )}
       </div>
-
-      {/* Action buttons */}
-      {isMyTurn && (gameState.roundPhase === 'song_playing' || gameState.roundPhase === 'placement') && selectedPosition !== null && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pb-2">
-          <button onClick={handlePlaceCard} className="btn-primary w-full text-lg cursor-pointer">
-            Confirm Placement
-          </button>
-        </motion.div>
-      )}
 
       {/* Token actions */}
       <div className="flex gap-2 pb-safe">

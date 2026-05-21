@@ -44,6 +44,27 @@
     overflow-x: hidden;
   }
 
+  /* Interactive Elements Cursor */
+  a,
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  select,
+  summary,
+  [role="button"],
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  [role="button"][aria-disabled="true"],
+  .cursor-not-allowed {
+    cursor: not-allowed;
+  }
+
   /* Prevent pull-to-refresh on mobile during gameplay */
   .game-active {
     overscroll-behavior: none;

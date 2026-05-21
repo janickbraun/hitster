@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameState } from '@/hooks/useGameState';
 import { useSpotifyPlayer } from '@/hooks/useSpotifyPlayer';
@@ -28,6 +28,7 @@ export default function HostPage() {
   const [copied, setCopied] = useState(false);
   const [isEndingGame, setIsEndingGame] = useState(false);
   const [autoStartSecondsLeft, setAutoStartSecondsLeft] = useState<number | null>(null);
+  const [activePlayerWasCorrect, setActivePlayerWasCorrect] = useState<boolean | null>(null);
   const countdown = useCountdown();
   const hasStartedCountdownRef = useRef(false);
   const hasTriggeredAutoRevealRef = useRef(false);
@@ -374,6 +375,7 @@ export default function HostPage() {
     setHasPlayedCurrentTrack(false);
     setShowReveal(false);
     setAutoStartSecondsLeft(null);
+    setActivePlayerWasCorrect(null);
 
     // Check if any player has won (reached win target, default 10 cards)
     const winTarget = gameState.session?.win_target || 10;
@@ -588,6 +590,7 @@ export default function HostPage() {
     let winnerId: string | null = null;
 
     const activePlayerIsCorrect = activePlayerGuessPosition !== null && isPositionCorrect(activePlayerGuessPosition);
+    setActivePlayerWasCorrect(activePlayerIsCorrect);
 
     if (activePlayerIsCorrect) {
       // Active player is correct!
@@ -628,12 +631,21 @@ export default function HostPage() {
       }
     } else {
       // Active player is wrong!
-      // Delete incorrect card from active player's timeline
-      await supabase.rpc('delete_timeline_card', {
-        p_player_id: activePlayerId,
-        p_session_id: sessionId,
-        p_track_id: currentRoundTrack.id,
-      });
+      // Delay deleting the incorrect card so it stays in the timeline for 5 seconds and glows red
+      const trackId = currentRoundTrack.id;
+      setTimeout(async () => {
+        try {
+          await supabase.rpc('delete_timeline_card', {
+            p_player_id: activePlayerId,
+            p_session_id: sessionId,
+            p_track_id: trackId,
+          });
+          // Refresh timelines on host after delete
+          gameState.fetchAllTimelines();
+        } catch (err) {
+          console.error('Failed to delete incorrect card after delay:', err);
+        }
+      }, 5000);
 
       // Query database for steal attempts for this track, ordered by creation time
       const { data: steals } = await supabase
@@ -1105,18 +1117,28 @@ export default function HostPage() {
                     const isCurrentRoundTrack = currentRoundTrack && card.track.id === currentRoundTrack.id;
                     const isRevealed = !isCurrentRoundTrack || showReveal;
 
+                    let cardClass = 'bg-white/5 border-white/10';
+
+                    if (isCurrentRoundTrack) {
+                      if (isRevealed) {
+                        if (activePlayerWasCorrect === true) {
+                          cardClass = '!border-success !bg-success/15 !shadow-[0_0_15px_rgba(16,185,129,0.4)]';
+                        } else if (activePlayerWasCorrect === false) {
+                          cardClass = '!border-error !bg-error/15 !shadow-[0_0_15px_rgba(239,68,68,0.4)]';
+                        } else {
+                          cardClass = '!border-success/40 !bg-success/15';
+                        }
+                      } else {
+                        cardClass = '!border-primary/40 !border-dashed !bg-primary/10 animate-pulse';
+                      }
+                    }
+
                     return (
                       <div key={card.track.id} className={`flex items-center ${gapClass} shrink-0`}>
                         <motion.div
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className={`border rounded-lg p-2 ${cardWidthClass} text-center shadow-lg relative group overflow-hidden transition-all duration-500 ${
-                            isCurrentRoundTrack
-                              ? isRevealed
-                                ? 'bg-success/15 border-success/40' // Revealed
-                                : 'bg-primary/10 border-primary/40 border-dashed animate-pulse' // Unrevealed placement
-                              : 'bg-white/5 border-white/10' // Standard card
-                          }`}
+                          className={`border rounded-lg p-2 ${cardWidthClass} text-center shadow-lg relative group overflow-hidden transition-all duration-500 ${cardClass}`}
                         >
                           {isCurrentRoundTrack && !isRevealed ? (
                             <>
